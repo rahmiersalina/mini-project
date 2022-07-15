@@ -1,60 +1,125 @@
-package controllers
+package controller
 
 import (
-	"mini-project/config"
-	"mini-project/helper"
-	"mini-project/models"
+	"errors"
 	"net/http"
+	"order_kafe/category"
+	"order_kafe/helper"
+	"order_kafe/user"
 	"strconv"
 
-	"github.com/labstack/echo/v4"
+	"github.com/gin-gonic/gin"
 )
 
-// get all makanans
-func GetMakananscontrollers(c echo.Context) error {
-	var makanans []models.Makanan
-	if err := config.DB.Table("makanan").Find(&makanans).Error; err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, helper.BuildResponse("success get all makanan", makanans))
+type CategoryController struct {
+	categoryService category.CategoryService
 }
 
-// get makanan by id
-func GetMakanancontrollers(c echo.Context) error {
+func NewCategoryHandler(categoryService category.CategoryService) *CategoryController {
+	return &CategoryController{categoryService}
+}
+
+func (ctrl *CategoryController) CreateNewCategory(c *gin.Context) {
+	var input category.InputNewCategory
+
+	// cek apakah yg akses adalah admin
+	currentUser := c.MustGet("currentUser").(user.User)
+	userRole := currentUser.Role
+	if userRole != "admin" {
+		res := helper.ApiResponse("Failed to Access", http.StatusBadRequest, "failed", errors.New("kamu bukan admin"))
+
+		c.JSON(http.StatusBadRequest, res)
+		return
+	}
+
+	err := c.ShouldBindJSON(&input)
+	if err != nil {
+		res := helper.ApiResponse("New Data Has Been Failed", http.StatusUnprocessableEntity, "failed", err)
+
+		c.JSON(http.StatusUnprocessableEntity, res)
+		return
+	}
+
+	newCategory, errCate := ctrl.categoryService.CreateNewCategory(input)
+	if errCate != nil {
+		res := helper.ApiResponse("New Data Has Been Failed", http.StatusBadRequest, "failed", errCate)
+
+		c.JSON(http.StatusBadRequest, res)
+	}
+
+	//formatter :=
+
+	res := helper.ApiResponse("New Category Has Been Created", http.StatusCreated, "success", newCategory)
+
+	c.JSON(http.StatusCreated, res)
+}
+
+func (ctrl *CategoryController) GetCategories(c *gin.Context) {
+	categories, err := ctrl.categoryService.GetAllICategory()
+	if err != nil {
+		res := helper.ApiResponse("Data Not Found or Error", http.StatusBadRequest, "failed", err)
+
+		c.JSON(http.StatusBadRequest, res)
+		return
+	}
+
+	res := helper.ApiResponse("Fetch All Data of Category", http.StatusOK, "success", categories)
+
+	c.JSON(http.StatusCreated, res)
+}
+
+func (ctrl *CategoryController) DeleteCategory(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	makanan := models.Makanan{}
-	if err := config.DB.Table("makanan").First(&makanan, id).Error; err != nil {
-		if err.Error() == "record not found" {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"message": "makanan not found",
-			})
-		}
 
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	// cek apakah yg akses adalah admin
+	currentUser := c.MustGet("currentUser").(user.User)
+	userRole := currentUser.Role
+	if userRole != "admin" {
+		res := helper.ApiResponse("Failed to Access", http.StatusBadRequest, "failed", errors.New("kamu bukan admin"))
+
+		c.JSON(http.StatusBadRequest, res)
+		return
 	}
 
-	return c.JSON(http.StatusOK, helper.BuildResponse("success get makanan", makanan))
-}
-
-func InsertMakanan(c echo.Context) error {
-	var input models.InputNewMakanan
-	var makanan models.Makanan
-
-	err := c.Bind(&input)
+	itemById, err := ctrl.categoryService.GetCategoryById(id)
 	if err != nil {
-		return err
+		res := helper.ApiResponse("Item Not Found", http.StatusBadRequest, "failed", err)
+
+		c.JSON(http.StatusBadRequest, res)
+		return
 	}
 
-	makanan.Nama_makanan = input.NamaMakanan
-	makanan.Jenis = input.Jenis
-	makanan.Harga = input.Harga
-	makanan.Id_makanan = "2"
+	if itemById.ID == 0 {
+		res := helper.ApiResponse("Category Not Found", http.StatusBadRequest, "failed", err)
 
-	err = config.DB.Table("makanan").Create(&makanan).Error
-	if err != nil {
-		return err
+		c.JSON(http.StatusBadRequest, res)
+		return
 	}
-	return c.JSON(http.StatusOK, "success")
 
+	itemDelete, errDel := ctrl.categoryService.DeleteCategory(itemById.ID)
+	if errDel != nil {
+		res := helper.ApiResponse("Category Not Found", http.StatusBadRequest, "failed", errDel)
+
+		c.JSON(http.StatusBadRequest, res)
+		return
+	}
+
+	cekItem, errCek := ctrl.categoryService.GetCategoryById(id)
+	if errCek != nil {
+		res := helper.ApiResponse("Any Error", http.StatusBadRequest, "failed", errCek)
+
+		c.JSON(http.StatusBadRequest, res)
+		return
+	}
+
+	if cekItem.ID == 0 {
+		res := helper.ApiResponse("Successfuly Delete Category", http.StatusOK, "success", nil)
+
+		c.JSON(http.StatusOK, res)
+		return
+	}
+
+	res := helper.ApiResponse("Any Error", http.StatusBadRequest, "failed", itemDelete)
+
+	c.JSON(http.StatusCreated, res)
 }

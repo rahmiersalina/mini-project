@@ -1,4 +1,4 @@
-package category
+package user
 
 import (
 	"regexp"
@@ -9,8 +9,8 @@ import (
 )
 
 type TestUnit struct {
-	Mock                sqlmock.Sqlmock
-	ICategoryRepository categoryRepository
+	Mock            sqlmock.Sqlmock
+	IUserRepository userRepository
 }
 
 func NewTestUnit() TestUnit {
@@ -37,12 +37,12 @@ func NewTestUnit() TestUnit {
 		panic(err)
 	}
 	tu.Mock = mock
-	iFaceUserRepo := NewCategoryRepository(dbGorm)
-	tu.ICategoryRepository = *iFaceUserRepo
+	iFaceUserRepo := NewUserRepository(dbGorm)
+	tu.IUserRepository = *iFaceUserRepo
 	tu.Mock.ExpectQuery(regexp.QuoteMeta(
-		"SELECT * FROM `categories`")).
+		"SELECT * FROM `users`")).
 		WillReturnRows(
 			sqlmock.NewRows([]string{"id", "fullname"}).
-				AddRow(1, "snack").AddRow(2, "jus"))
+				AddRow(1, "fahmi").AddRow(2, "abida"))
 	return tu
 }

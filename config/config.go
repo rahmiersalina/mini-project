@@ -1,48 +1,42 @@
 package config
 
-import (
-	"fmt"
-
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-)
-
-var DB *gorm.DB
-
-func init() {
-	InitDB()
-
-}
+import "os"
 
 type Config struct {
-	DB_makananname string
-	DB_Password    string
-	DB_Port        string
-	DB_Host        string
-	DB_Name        string
+	SERVER_ADDRESS string
+	DB_USERNAME    string
+	DB_PASSWORD    string
+	DB_PORT        string
+	DB_HOST        string
+	DB_NAME        string
+	JWT_KEY        string
+	VT_SERVER_KEY  string
+	VT_CLIENT_KEY  string
 }
 
-func InitDB() {
+func InitConfiguration() Config {
+	// logic dapatin env
+	// file(.env, env.yaml, env.json,...), system env
 
-	config := Config{
-		DB_makananname: "root",
-		DB_Password:    "Admin123",
-		DB_Port:        "3306",
-		DB_Host:        "localhost",
-		DB_Name:        "pemesanan_makanan",
+	return Config{
+		SERVER_ADDRESS: GetOrDefault("SERVER_ADDRESS", "0.0.0.0:8080"),
+		DB_USERNAME:    GetOrDefault("DB_USERNAME", "admin"),
+		DB_PASSWORD:    GetOrDefault("DB_PASSWORD", "rahmiersalina"),
+		DB_NAME:        GetOrDefault("DB_NAME", "mini_project"),
+		DB_PORT:        GetOrDefault("DB_PORT", "3306"),
+		DB_HOST:        GetOrDefault("DB_HOST", "database-2.ch0glfhlz2py.ap-southeast-1.rds.amazonaws.com"),
+		JWT_KEY:        GetOrDefault("JWT_KEY", "FuFuFuFu"),
+		VT_SERVER_KEY:  GetOrDefault("VT_SERVER_KEY", "VT_SERVER_KEY"),
+		VT_CLIENT_KEY:  GetOrDefault("VT_CLIENT_KEY", "VT_CLIENT_KEY"),
 	}
+}
 
-	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local",
-		config.DB_makananname,
-		config.DB_Password,
-		config.DB_Host,
-		config.DB_Port,
-		config.DB_Name,
-	)
-
-	var err error
-	DB, err = gorm.Open(mysql.Open(connectionString), &gorm.Config{})
-	if err != nil {
-		panic(err)
+func GetOrDefault(envKey, defaultValue string) string {
+	// cek env
+	if val, exist := os.LookupEnv(envKey); exist {
+		return val
 	}
+	// kalau ada, return valuenya
+	// kalau gaada, return defaultValuenya
+	return defaultValue
 }
